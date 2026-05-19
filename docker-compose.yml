@@ -1,28 +1,8 @@
 services:
-  mysql:
-    build:
-      context: .
-      dockerfile: Dockerfile-mysql
-    ports:
-      - "3306:3306"  # 修改为 3306 或其他未使用的端口
-    networks:
-      - app-network
-    volumes:
-      - mysql_data:/var/lib/mysql  # 持久化数据
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "xiaozhi", "-p123456"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
   node:
     build:
       context: ./web
       dockerfile: ../Dockerfile-node
-    depends_on:
-      mysql:
-        condition: service_healthy
     ports:
       - "8084:8084"
     networks:
@@ -39,23 +19,21 @@ services:
         - VOSK_MODEL_SIZE=${VOSK_MODEL_SIZE:-small}
         - TTS_MODEL=${TTS_MODEL:-vits-melo-tts-zh_en}
         - DOWNLOAD_PROXY=${BUILD_PROXY:-}
-      # 添加构建缓存设置
       cache_from:
         - eclipse-temurin:21-jre
-    depends_on:
-      mysql:
-        condition: service_healthy
     ports:
       - "8091:8091"
     networks:
       - app-network
     environment:
-      - SPRING_DATA_REDIS_HOST=redis
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/xiaozhi?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      - SPRING_DATASOURCE_USERNAME=xiaozhi
-      - SPRING_DATASOURCE_PASSWORD=123456
-      - HOST_IP=${HOST_IP:-}
-    restart: always  # 自动重启
+      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-43.142.238.69}
+      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
+      - SPRING_DATA_REDIS_PASSWORD=${REDIS_PASSWORD:-88H3HfSBj6wTKHp4}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${MYSQL_HOST:-43.142.238.69}:${MYSQL_PORT:-3306}/xiaozhi?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-xiaozhi}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-ScbawGf2MmXkEFp6}
+      - HOST_IP=${HOST_IP:-43.142.238.69}
+    restart: always
     deploy:
       resources:
         limits:
@@ -76,19 +54,18 @@ services:
         - DOWNLOAD_PROXY=${BUILD_PROXY:-}
       cache_from:
         - eclipse-temurin:21-jre
-    depends_on:
-      mysql:
-        condition: service_healthy
     ports:
       - "8092:8092"
     networks:
       - app-network
     environment:
-      - SPRING_DATA_REDIS_HOST=redis
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/xiaozhi?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      - SPRING_DATASOURCE_USERNAME=xiaozhi
-      - SPRING_DATASOURCE_PASSWORD=123456
-      - HOST_IP=${HOST_IP:-}
+      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-43.142.238.69}
+      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
+      - SPRING_DATA_REDIS_PASSWORD=${REDIS_PASSWORD:-88H3HfSBj6wTKHp4}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${MYSQL_HOST:-43.142.238.69}:${MYSQL_PORT:-3306}/xiaozhi?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-xiaozhi}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-ScbawGf2MmXkEFp6}
+      - HOST_IP=${HOST_IP:-43.142.238.69}
     restart: always
     deploy:
       resources:
@@ -99,40 +76,6 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    restart: always
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - app-network
-      - xiaozhi-network
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-
 networks:
   app-network:
     driver: bridge
-  xiaozhi-network:
-    driver: bridge
-    name: xiaozhi-network
-
-volumes:
-  mysql_data:  # 持久化数据卷
-  redis_data:  # 持久化Redis数据
